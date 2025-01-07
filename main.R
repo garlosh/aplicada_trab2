@@ -87,21 +87,26 @@ ggplot(freq_mes, aes(x = Mes, y = Frequencia, fill = Cluster)) +
   theme_minimal()
 
 
-
-install.packages(c("tidyverse", "tsibble", "feasts", "anomalize"))
-library(tidyverse)
-library(tsibble)
-library(feasts)
-library(anomalize)
-
-# Certifique-se de que os dados estejam carregados corretamente
-# e que o arquivo "dados_filtrados" já possua os clusters gerados.
-
 # Converter a coluna Data para o formato correto
 dados_filtrados <- dados_filtrados %>%
   mutate(Data = as.Date(Data, format = "%d/%m/%Y"))
 
-# Passo 1: Agregar os dados por Data e Cluster
+
+# Variáveis de interesse para analisar nos clusters
+lapply(c("PrecipitacaoTotal", "TempCompensadaMedia", "InsolacaoTotal"), function(var) {
+  ggplot(dados_filtrados, aes(x = Mes, y = !!sym(var), color = Cluster)) +
+    geom_point() +
+    labs(
+      title = paste("Distribuição de", var, "por Mês"),
+      x = "Mês",
+      y = var
+    ) +
+    theme_minimal()
+})
+
+
+
+# Agregar dados por Data e Cluster
 dados_temporais <- dados_filtrados %>%
   group_by(Data, Cluster) %>%
   summarise(
@@ -111,28 +116,7 @@ dados_temporais <- dados_filtrados %>%
     .groups = "drop"
   )
 
-# Passo 2: Visualizar Tendências ao Longo do Tempo
-# Frequência dos clusters ao longo do tempo
-ggplot(dados_temporais, aes(x = Data, y = Frequencia, color = Cluster)) +
-  geom_line() +
-  labs(
-    title = "Frequência dos Clusters ao Longo do Tempo",
-    x = "Data",
-    y = "Frequência"
-  ) +
-  theme_minimal()
 
-# Velocidade média do vento por cluster ao longo do tempo
-ggplot(dados_temporais, aes(x = Data, y = VelocidadeVentoMedia, color = Cluster)) +
-  geom_line() +
-  labs(
-    title = "Velocidade Média do Vento por Cluster",
-    x = "Data",
-    y = "Velocidade Média do Vento"
-  ) +
-  theme_minimal()
-
-# Passo 3: Detectar Anomalias
 # Detectar anomalias na frequência dos clusters
 dados_temporais_anom <- dados_temporais %>%
   group_by(Cluster) %>%
