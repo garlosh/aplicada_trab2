@@ -85,3 +85,83 @@ ggplot(freq_mes, aes(x = Mes, y = Frequencia, fill = Cluster)) +
        x = "Mês",
        y = "Frequência") +
   theme_minimal()
+
+
+
+install.packages(c("tidyverse", "tsibble", "feasts", "anomalize"))
+library(tidyverse)
+library(tsibble)
+library(feasts)
+library(anomalize)
+
+# Certifique-se de que os dados estejam carregados corretamente
+# e que o arquivo "dados_filtrados" já possua os clusters gerados.
+
+# Converter a coluna Data para o formato correto
+dados_filtrados <- dados_filtrados %>%
+  mutate(Data = as.Date(Data, format = "%d/%m/%Y"))
+
+# Passo 1: Agregar os dados por Data e Cluster
+dados_temporais <- dados_filtrados %>%
+  group_by(Data, Cluster) %>%
+  summarise(
+    Frequencia = n(),
+    VelocidadeVentoMedia = mean(VelocidadeVentoMedia, na.rm = TRUE),
+    VelocidadeVentoMaximaMedia = mean(VelocidadeVentoMaximaMedia, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Passo 2: Visualizar Tendências ao Longo do Tempo
+# Frequência dos clusters ao longo do tempo
+ggplot(dados_temporais, aes(x = Data, y = Frequencia, color = Cluster)) +
+  geom_line() +
+  labs(
+    title = "Frequência dos Clusters ao Longo do Tempo",
+    x = "Data",
+    y = "Frequência"
+  ) +
+  theme_minimal()
+
+# Velocidade média do vento por cluster ao longo do tempo
+ggplot(dados_temporais, aes(x = Data, y = VelocidadeVentoMedia, color = Cluster)) +
+  geom_line() +
+  labs(
+    title = "Velocidade Média do Vento por Cluster",
+    x = "Data",
+    y = "Velocidade Média do Vento"
+  ) +
+  theme_minimal()
+
+# Passo 3: Detectar Anomalias
+# Detectar anomalias na frequência dos clusters
+dados_temporais_anom <- dados_temporais %>%
+  group_by(Cluster) %>%
+  time_decompose(Frequencia, method = "stl", frequency = "auto") %>%
+  anomalize(remainder, method = "iqr") %>%
+  time_recompose()
+
+# Visualizar as anomalias detectadas
+plot_anomalies(dados_temporais_anom) +
+  labs(title = "Anomalias na Frequência dos Clusters")
+
+# Passo 4: Analisar a Série Temporal por Cluster
+# Criar uma série temporal para cada cluster
+dados_ts <- dados_temporais %>%
+  as_tsibble(index = Data, key = Cluster)
+
+# Decomposição sazonal para cada cluster
+dados_decom <- dados_ts %>%
+  model(STL(Frequencia ~ season(window = "periodic")))
+
+# Visualizar a decomposição
+dados_decom %>%
+  components() %>%
+  autoplot() +
+  labs(title = "Decomposição Sazonal por Cluster")
+
+# Passo 5: Análise de Tendências em Velocidade do Vento
+dados_ts %>%
+  model(STL(VelocidadeVentoMedia ~ season(window = "periodic"))) %>%
+  components() %>%
+  autoplot() +
+  labs(title = "Tendência e Sazonalidade na Velocidade Média do Vento")
