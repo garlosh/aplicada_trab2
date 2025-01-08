@@ -134,35 +134,68 @@ dados_temporais <- dados_filtrados %>%
   )
 
 
-# Detectar anomalias na frequência dos clusters
-dados_temporais_anom <- dados_temporais %>%
-  group_by(Cluster) %>%
-  time_decompose(Frequencia, method = "stl", frequency = "auto") %>%
-  anomalize(remainder, method = "iqr") %>%
-  time_recompose()
+# Detectar anomalias
+library(anomalize)
 
-# Visualizar as anomalias detectadas
-plot_anomalies(dados_temporais_anom) +
-  labs(title = "Anomalias na Frequência dos Clusters")
+# Variáveis de interesse para análise de anomalias
+dados_temporais <- dados_filtrados %>%
+  group_by(Data, Cluster) %>%
+  summarise(
+    Frequencia = n(),
+    VelocidadeVentoMedia = mean(VelocidadeVentoMedia, na.rm = TRUE),
+    VelocidadeVentoMaximaMedia = mean(VelocidadeVentoMaximaMedia, na.rm = TRUE),
+    InsolacaoTotal = mean(InsolacaoTotal, na.rm = TRUE),
+    NebulosidadeMedia = mean(NebulosidadeMedia, na.rm = TRUE),
+    .groups = "drop"
+  )
 
-# Passo 4: Analisar a Série Temporal por Cluster
-# Criar uma série temporal para cada cluster
-dados_ts <- dados_temporais %>%
-  as_tsibble(index = Data, key = Cluster)
+# Variáveis de interesse (ajustadas se necessário)
+variaveis <- c("VelocidadeVentoMedia", "VelocidadeVentoMaximaMedia", "InsolacaoTotal", "NebulosidadeMedia")
 
-# Decomposição sazonal para cada cluster
-dados_decom <- dados_ts %>%
-  model(STL(Frequencia ~ season(window = "periodic")))
+# Lista para armazenar resultados de anomalias
+anomalias_lista <- list()
 
-# Visualizar a decomposição
-dados_decom %>%
-  components() %>%
-  autoplot() +
-  labs(title = "Decomposição Sazonal por Cluster")
+# Loop para detectar anomalias por variável e cluster
+for (variavel in variaveis) {
+  if (variavel %in% colnames(dados_temporais)) {  # Verificar se a variável existe
+    anomalias <- dados_temporais %>%
+      select(Data, Cluster, all_of(variavel)) %>%
+      group_by(Cluster) %>%
+      rename(Variavel = all_of(variavel)) %>%
+      time_decompose(Variavel, method = "stl", frequency = "auto") %>%
+      anomalize(remainder, method = "iqr") %>%
+      time_recompose() %>%
+      filter(anomaly == "Yes") %>%
+      mutate(Variavel = variavel)
+    
+    # Adicionar à lista de anomalias
+    anomalias_lista[[variavel]] <- anomalias
+  } else {
+    warning(paste("Variável", variavel, "não encontrada no dataset."))
+  }
+}
 
-# Passo 5: Análise de Tendências em Velocidade do Vento
-dados_ts %>%
-  model(STL(VelocidadeVentoMedia ~ season(window = "periodic"))) %>%
-  components() %>%
-  autoplot() +
-  labs(title = "Tendência e Sazonalidade na Velocidade Média do Vento")
+# Combinar todas as anomalias em um único dataframe
+anomalias_todas <- bind_rows(anomalias_lista)
+
+# Exibir as anomalias detectadas
+print(anomalias_todas)
+
+# Resumo de anomalias por cluster e variável
+anomalias_resumo <- anomalias_todas %>%
+  group_by(Cluster, Variavel) %>%
+  summarise(
+    Total_Anomalias = n(),
+    Datas_Anomalias = paste(Data, collapse = ", "),
+    .groups = "drop"
+  )
+
+# Exibir o resumo
+print(anomalias_resumo)
+
+library(knitr)
+library(kableExtra)
+
+anomalias_resumo %>%
+  kable("html", caption = "Resumo das Anomalias por Cluster e Variável") %>%
+  kable_styling(full_width = TRUE, bootstrap_options = c("striped", "hover", "condensed"))
