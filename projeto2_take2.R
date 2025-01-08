@@ -7,7 +7,7 @@ library(ggplot2)
 
 
 # Carregar os dados (substitua 'dados.csv' pelo nome do arquivo real)
-dados <- read.delim("C:/Users/luiza/Downloads/Dados2_3.txt",
+dados <- read.delim("dados.txt",
                           sep = ';', dec = '.')
 
 dados <- dados %>% select(-VisibilidadeMedia,
@@ -53,7 +53,7 @@ print((xtable(sumario,
 # Imprimir a tabela no formato LaTeX
 
 #series temp
-par(mfrow = c(3, 5))
+par(mfrow = c(2, 3))
 
 for (col in colnames(dados[, 2:15])){
   plot(dados$Data, dados[[col]], type = 'l',
@@ -80,7 +80,7 @@ pastel_colors <- c(
   "#D8C4E1",  # Light Lavender
   "#E0B0FF"  # Lavender
 )
-par(mfrow = c(3, 5))
+par(mfrow = c(2, 3))
 
 for (n in 2:15){
   boxplot(dados[n],

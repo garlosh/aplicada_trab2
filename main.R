@@ -1,6 +1,7 @@
 # Carregar pacotes necessários
 library(tidyverse)
-
+library(ggplot2)
+library(caret)
 # Carregar os dados (substitua 'dados.csv' pelo nome do arquivo real)
 dados <- read.table("dados.txt", sep = ";", stringsAsFactors = FALSE, header = TRUE)
 
@@ -10,13 +11,31 @@ head(dados)
 
 # Selecionar variáveis numéricas para a clusterização
 variaveis_numericas <- dados %>% 
-  select(VelocidadeVentoMedia, VelocidadeVentoMaximaMedia, EvaporacaoPiche, InsolacaoTotal, NebulosidadeMedia)
+  select(DirecaoVento,
+         VelocidadeVentoMedia,
+         VelocidadeVentoMaximaMedia,
+         EvaporacaoPiche,
+         EvapoBHPotencial,
+         EvapoBHReal,
+         InsolacaoTotal,
+         NumDiasPrecipitacao,
+         PrecipitacaoTotal,
+         PressaoNivelMarMedia,
+         PressaoMedia,
+         TempMaximaMedia,
+         NebulosidadeMedia,
+         TempMinimaMedia,
+         UmidadeRelativaMedia)
+
+cor_matrix <- cor(variaveis_numericas, use = "complete.obs")
+selected_vars <- findCorrelation(cor_matrix, cutoff = 0.8, verbose = TRUE)
+variaveis_selecionadas <- variaveis_numericas[, -selected_vars]
 
 # Criar uma versão filtrada do conjunto de dados para evitar discrepâncias
-dados_filtrados <- dados[complete.cases(variaveis_numericas), ]  # Somente linhas sem NA nas variáveis numéricas
+dados_filtrados <- dados[complete.cases(variaveis_selecionadas), ]  # Somente linhas sem NA nas variáveis numéricas
 
 # Normalizar os dados (escala 0-1)
-variaveis_normalizadas <- scale(variaveis_numericas[complete.cases(variaveis_numericas), ])
+variaveis_normalizadas <- scale(variaveis_selecionadas[complete.cases(variaveis_selecionadas), ])
 
 # Determinar o número ideal de clusters (Método Elbow)
 set.seed(123)
@@ -28,11 +47,10 @@ for (k in 1:10) {
 
 # Plotar o método Elbow
 plot(1:10, sse, type = "b", pch = 19, frame = FALSE, 
-     xlab = "Número de clusters (k)", ylab = "Soma dos quadrados dos erros (SSE)",
-     main = "Método Elbow")
+     xlab = "Número de clusters (k)", ylab = "Soma dos quadrados dos erros (SSE)")
 
 # Definir o número de clusters (supondo 3 como exemplo)
-k <- 3
+k <- 2
 
 # Aplicar o K-Means
 kmeans_resultado <- kmeans(variaveis_normalizadas, centers = k, nstart = 25)
