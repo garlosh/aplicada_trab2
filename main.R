@@ -98,9 +98,8 @@ freq_mes <- dados_filtrados %>%
 
 # Gráfico de barras para a distribuição de clusters ao longo dos meses
 ggplot(freq_mes, aes(x = Mes, y = Frequencia, fill = Cluster)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  labs(title = "Distribuição dos Clusters por Mês",
-       x = "Mês",
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+  labs(x = "Mês",
        y = "Frequência") +
   theme_minimal()
 
@@ -113,7 +112,7 @@ dados_filtrados <- dados_filtrados %>%
 # Variáveis de interesse para analisar nos clusters
 lapply(c("PrecipitacaoTotal", "TempCompensadaMedia", "InsolacaoTotal"), function(var) {
   ggplot(dados_filtrados, aes(x = Mes, y = !!sym(var), color = Cluster)) +
-    geom_point() +
+    geom_boxplot() +
     labs(
       title = paste("Distribuição de", var, "por Mês"),
       x = "Mês",
