@@ -11,8 +11,8 @@ library(RColorBrewer)
 library(dendextend)
 library(nationalparkcolors)
 
-# Carregar os dados (substitua 'dados.csv' pelo nome do arquivo real)
-dados <- read.delim("C:/Users/luiza/Downloads/Dados2_3.txt",
+# Carregar os dados
+dados <- read.delim("dados.txt",
                           sep = ';', dec = '.')
 
 dados <- dados %>% select(-VisibilidadeMedia,
